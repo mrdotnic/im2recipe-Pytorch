@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.backends.cudnn as cudnn
-from data_loader import ImagerLoader # our data_loader
+from data_loader import ImagerLoader  # our data_loader
 import numpy as np
 from trijoint import im2recipe
 import pickle
@@ -21,14 +21,14 @@ opts = parser.parse_args()
 
 torch.manual_seed(opts.seed)
 if not opts.no_cuda:
-        torch.cuda.manual_seed(opts.seed)
+    torch.cuda.manual_seed(opts.seed)
 
 np.random.seed(opts.seed)
 
+
 def main():
-   
     model = im2recipe()
-    model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0,1,2,3])
+    model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0, 1, 2, 3])
     # model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0,1])
     if not opts.no_cuda:
         model.cuda()
@@ -41,7 +41,7 @@ def main():
     # cosine_crit = nn.CosineEmbeddingLoss(0.1)
     if opts.semantic_reg:
         weights_class = torch.Tensor(opts.numClasses).fill_(1)
-        weights_class[0] = 0 # the background class is set to 0, i.e. ignore
+        weights_class[0] = 0  # the background class is set to 0, i.e. ignore
         # CrossEntropyLoss combines LogSoftMax and NLLLoss in one single class
         class_crit = nn.CrossEntropyLoss(weight=weights_class)
         if not opts.no_cuda:
@@ -62,22 +62,23 @@ def main():
     # data preparation, loaders
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-    
+
     # preparing test loader 
     test_loader = torch.utils.data.DataLoader(
         ImagerLoader(opts.img_path,
- 	    transforms.Compose([
-            transforms.Scale(256), # rescale the image keeping the original aspect ratio
-            transforms.CenterCrop(224), # we get only the center of that rescaled
-            transforms.ToTensor(),
-            normalize,
-        ]),data_path=opts.data_path,sem_reg=opts.semantic_reg,partition='test'),
+                     transforms.Compose([
+                         transforms.Scale(256),  # rescale the image keeping the original aspect ratio
+                         transforms.CenterCrop(224),  # we get only the center of that rescaled
+                         transforms.ToTensor(),
+                         normalize,
+                     ]), data_path=opts.data_path, sem_reg=opts.semantic_reg, partition='test'),
         batch_size=opts.batch_size, shuffle=False,
         num_workers=opts.workers, pin_memory=(not opts.no_cuda))
     print 'Test loader prepared.'
 
     # run test
     test(test_loader, model, criterion)
+
 
 def test(test_loader, model, criterion):
     batch_time = AverageMeter()
@@ -91,27 +92,27 @@ def test(test_loader, model, criterion):
 
     end = time.time()
     for i, (input, target) in enumerate(test_loader):
-        input_var = list() 
+        input_var = list()
         for j in range(len(input)):
             v = torch.autograd.Variable(input[j], volatile=True)
         target_var = list()
-        for j in range(len(target)-2): # we do not consider the last two objects of the list
+        for j in range(len(target) - 2):  # we do not consider the last two objects of the list
             target[j] = target[j]
             v = torch.autograd.Variable(target[j], volatile=True)
             target_var.append(v.cuda() if not opts.no_cuda else v)
 
         # compute output
-        output = model(input_var[0],input_var[1], input_var[2], input_var[3], input_var[4])
-   
+        output = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4])
+
         # compute loss
         if opts.semantic_reg:
             cos_loss = criterion[0](output[0], output[1], target_var[0])
             img_loss = criterion[1](output[2], target_var[1])
             rec_loss = criterion[1](output[3], target_var[2])
             # combined loss
-            loss =  opts.cos_weight * cos_loss +\
-                    opts.cls_weight * img_loss +\
-                    opts.cls_weight * rec_loss 
+            loss = opts.cos_weight * cos_loss + \
+                   opts.cls_weight * img_loss + \
+                   opts.cls_weight * rec_loss
 
             # measure performance and record losses
             cos_losses.update(cos_loss.data[0], input[0].size(0))
@@ -125,17 +126,17 @@ def test(test_loader, model, criterion):
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
-        
-        if i==0:
+
+        if i == 0:
             data0 = output[0].data.cpu().numpy()
             data1 = output[1].data.cpu().numpy()
             data2 = target[-2]
             data3 = target[-1]
         else:
-            data0 = np.concatenate((data0,output[0].data.cpu().numpy()),axis=0)
-            data1 = np.concatenate((data1,output[1].data.cpu().numpy()),axis=0)
-            data2 = np.concatenate((data2,target[-2]),axis=0)
-            data3 = np.concatenate((data3,target[-1]),axis=0)
+            data0 = np.concatenate((data0, output[0].data.cpu().numpy()), axis=0)
+            data1 = np.concatenate((data1, output[1].data.cpu().numpy()), axis=0)
+            data2 = np.concatenate((data2, target[-2]), axis=0)
+            data3 = np.concatenate((data3, target[-1]), axis=0)
 
     if opts.semantic_reg:
         print('* Test cosine loss {losses.avg:.4f}'.format(losses=cos_losses))
@@ -144,19 +145,21 @@ def test(test_loader, model, criterion):
     else:
         print('* Test loss {losses.avg:.4f}'.format(losses=cos_losses))
 
-    with open(opts.path_results+'img_embeds.pkl', 'wb') as f:
+    with open(opts.path_results + 'img_embeds.pkl', 'wb') as f:
         pickle.dump(data0, f)
-    with open(opts.path_results+'rec_embeds.pkl', 'wb') as f:
+    with open(opts.path_results + 'rec_embeds.pkl', 'wb') as f:
         pickle.dump(data1, f)
-    with open(opts.path_results+'img_ids.pkl', 'wb') as f:
+    with open(opts.path_results + 'img_ids.pkl', 'wb') as f:
         pickle.dump(data2, f)
-    with open(opts.path_results+'rec_ids.pkl', 'wb') as f:
+    with open(opts.path_results + 'rec_ids.pkl', 'wb') as f:
         pickle.dump(data3, f)
 
     return cos_losses.avg
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -171,6 +174,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
 
 if __name__ == '__main__':
     main()
