@@ -1,18 +1,18 @@
-import os
 import time
-import random
+
 import numpy as np
+import os
+import random
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
-import torchvision.datasets as datasets
-import torchvision.models as models
-import torch.backends.cudnn as cudnn
-from data_loader import ImagerLoader
+
 from args import get_parser
+from data_loader import ImageLoader
 from trijoint import im2recipe
 
 # =============================================================================
@@ -83,28 +83,28 @@ def main():
 
     # preparing the training laoder
     train_loader = torch.utils.data.DataLoader(
-        ImagerLoader(opts.img_path,
-                     transforms.Compose([
-                         transforms.Scale(256),  # rescale the image keeping the original aspect ratio
-                         transforms.CenterCrop(256),  # we get only the center of that rescaled
-                         transforms.RandomCrop(224),  # random crop within the center crop
-                         transforms.RandomHorizontalFlip(),
-                         transforms.ToTensor(),
-                         normalize,
-                     ]), data_path=opts.data_path, partition='train', sem_reg=opts.semantic_reg),
+        ImageLoader(opts.img_path,
+                    transforms.Compose([
+                        transforms.Scale(256),  # rescale the image keeping the original aspect ratio
+                        transforms.CenterCrop(256),  # we get only the center of that rescaled
+                        transforms.RandomCrop(224),  # random crop within the center crop
+                        transforms.RandomHorizontalFlip(),
+                        transforms.ToTensor(),
+                        normalize,
+                    ]), data_path=opts.data_path, partition='train', sem_reg=opts.semantic_reg),
         batch_size=opts.batch_size, shuffle=True,
         num_workers=opts.workers, pin_memory=True)
     print 'Training loader prepared.'
 
     # preparing validation loader 
     val_loader = torch.utils.data.DataLoader(
-        ImagerLoader(opts.img_path,
-                     transforms.Compose([
-                         transforms.Scale(256),  # rescale the image keeping the original aspect ratio
-                         transforms.CenterCrop(224),  # we get only the center of that rescaled
-                         transforms.ToTensor(),
-                         normalize,
-                     ]), data_path=opts.data_path, sem_reg=opts.semantic_reg, partition='val'),
+        ImageLoader(opts.img_path,
+                    transforms.Compose([
+                        transforms.Scale(256),  # rescale the image keeping the original aspect ratio
+                        transforms.CenterCrop(224),  # we get only the center of that rescaled
+                        transforms.ToTensor(),
+                        normalize,
+                    ]), data_path=opts.data_path, sem_reg=opts.semantic_reg, partition='val'),
         batch_size=opts.batch_size, shuffle=False,
         num_workers=opts.workers, pin_memory=True)
     print 'Validation loader prepared.'

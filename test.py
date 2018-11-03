@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.backends.cudnn as cudnn
-from data_loader import ImagerLoader  # our data_loader
+from data_loader import ImageLoader  # our data_loader
 import numpy as np
 from trijoint import im2recipe
 import pickle
@@ -65,13 +65,13 @@ def main():
 
     # preparing test loader 
     test_loader = torch.utils.data.DataLoader(
-        ImagerLoader(opts.img_path,
-                     transforms.Compose([
-                         transforms.Scale(256),  # rescale the image keeping the original aspect ratio
-                         transforms.CenterCrop(224),  # we get only the center of that rescaled
-                         transforms.ToTensor(),
-                         normalize,
-                     ]), data_path=opts.data_path, sem_reg=opts.semantic_reg, partition='test'),
+        ImageLoader(opts.img_path,
+                    transforms.Compose([
+                        transforms.Scale(256),  # rescale the image keeping the original aspect ratio
+                        transforms.CenterCrop(224),  # we get only the center of that rescaled
+                        transforms.ToTensor(),
+                        normalize,
+                    ]), data_path=opts.data_path, sem_reg=opts.semantic_reg, partition='test'),
         batch_size=opts.batch_size, shuffle=False,
         num_workers=opts.workers, pin_memory=(not opts.no_cuda))
     print 'Test loader prepared.'
@@ -95,6 +95,8 @@ def test(test_loader, model, criterion):
         input_var = list()
         for j in range(len(input)):
             v = torch.autograd.Variable(input[j], volatile=True)
+            input_var.append(v.cuda() if not opts.no_cuda else v)
+
         target_var = list()
         for j in range(len(target) - 2):  # we do not consider the last two objects of the list
             target[j] = target[j]

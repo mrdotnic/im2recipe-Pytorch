@@ -14,11 +14,11 @@ def default_loader(path):
         im = Image.open(path).convert('RGB')
         return im
     except:
-        print(..., file=sys.stderr)
+        print(file=sys.stderr)
         return Image.new('RGB', (224, 224), 'white')
 
 
-class ImagerLoader(data.Dataset):
+class ImageLoader(data.Dataset):
     def __init__(self, img_path, transform=None, target_transform=None,
                  loader=default_loader, square=False, data_path=None, partition=None, sem_reg=None):
 
@@ -71,13 +71,13 @@ class ImagerLoader(data.Dataset):
         if target == 1:
             if self.partition == 'train':
                 # We do only use the first five images per recipe during training
-                imgIdx = np.random.choice(range(min(5, len(imgs))))
+                img_idx = np.random.choice(range(min(5, len(imgs))))
             else:
-                imgIdx = 0
+                img_idx = 0
 
-            loader_path = [imgs[imgIdx]['id'][i] for i in range(4)]
+            loader_path = [imgs[img_idx]['id'][i] for i in range(4)]
             loader_path = os.path.join(*loader_path)
-            path = os.path.join(self.imgPath, self.partition, loader_path, imgs[imgIdx]['id'])
+            path = os.path.join(self.imgPath, self.partition, loader_path, imgs[img_idx]['id'])
         else:
             # we randomly pick one non-matching image
             all_idx = range(len(self.ids))
@@ -93,11 +93,11 @@ class ImagerLoader(data.Dataset):
 
             if self.partition == 'train':  # if training we pick a random image
                 # We do only use the first five images per recipe during training
-                imgIdx = np.random.choice(range(min(5, len(rndimgs))))
+                img_idx = np.random.choice(range(min(5, len(rndimgs))))
             else:
-                imgIdx = 0
+                img_idx = 0
 
-            path = self.imgPath + rndimgs[imgIdx]['id']
+            path = self.imgPath + rndimgs[img_idx]['id']
 
             # instructions
         instrs = sample['intrs']
