@@ -29,15 +29,15 @@ class Layer(object):
     @staticmethod
     def merge(layers, ROOT, copy_base=False, **kwargs):
         layers = [l if isinstance(l, list) else Layer.load(l, ROOT, **kwargs) for l in layers]
-        base = copy.deepcopy(layers[0]) if copy_base else layers[0]
-        entries_by_id = {entry['id']: entry for entry in base}
+        layer1 = copy.deepcopy(layers[0]) if copy_base else layers[0]
+        id2recipe = {recipe['id']: recipe for recipe in layer1}
         for layer in layers[1:]:
-            for entry in layer:
-                base_entry = entries_by_id.get(entry['id'])
-                if not base_entry:
+            for recipe in layer:
+                found_recipe = id2recipe.get(recipe['id'])
+                if not found_recipe:
                     continue
-                base_entry.update(entry)
-        return base
+                found_recipe.update(recipe)
+        return layer1
 
 
 REPLACEMENTS = {

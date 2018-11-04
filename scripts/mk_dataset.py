@@ -45,7 +45,7 @@ parser = get_parser()
 opts = parser.parse_args()
 # =============================================================================
 
-DATASET = opts.dataset
+dataset_path = opts.dataset
 
 # don't use this file once dataset is clean
 with open('remove1M.txt', 'r') as f:
@@ -69,7 +69,7 @@ print ("Done.", time.time() - t)
 
 print('Loading dataset.')
 # print DATASET
-dataset = utils.Layer.merge([utils.Layer.L1, utils.Layer.L2, utils.Layer.INGRS], DATASET)
+dataset = utils.Layer.merge([utils.Layer.L1, utils.Layer.L2, utils.Layer.INGRS], dataset_path)
 print('Loading ingr vocab.')
 with open(opts.vocab) as f_vocab:
     ingr_vocab = {w.rstrip(): i + 2 for i, w in enumerate(f_vocab)}  # +1 for lua

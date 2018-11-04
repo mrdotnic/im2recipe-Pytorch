@@ -51,7 +51,7 @@ class ImageLoader(data.Dataset):
         self.loader = loader
 
     def __getitem__(self, index):
-        recipId = self.ids[index]
+        recipe_id = self.ids[index]
         # we force 80 percent of them to be a mismatch
         if self.partition == 'train':
             match = np.random.uniform() > self.mismtch
@@ -62,8 +62,8 @@ class ImageLoader(data.Dataset):
 
         target = match and 1 or -1
 
-        with self.env.begin(write=False) as txn:
-            serialized_sample = txn.get(self.ids[index])
+        with self.env.begin(write=False) as lmdb_transaction:
+            serialized_sample = lmdb_transaction.get(recipe_id)
         sample = pickle.loads(serialized_sample)
         imgs = sample['imgs']
 
@@ -85,8 +85,8 @@ class ImageLoader(data.Dataset):
             while rndindex == index:
                 rndindex = np.random.choice(all_idx)  # pick a random index
 
-            with self.env.begin(write=False) as txn:
-                serialized_sample = txn.get(self.ids[rndindex])
+            with self.env.begin(write=False) as lmdb_transaction:
+                serialized_sample = lmdb_transaction.get(self.ids[rndindex])
 
             rndsample = pickle.loads(serialized_sample)
             rndimgs = rndsample['imgs']
@@ -122,14 +122,13 @@ class ImageLoader(data.Dataset):
             target = self.target_transform(target)
 
         rec_class = sample['classes'] - 1
-        rec_id = self.ids[index]
 
         if target == -1:
             img_class = rndsample['classes'] - 1
             img_id = self.ids[rndindex]
         else:
             img_class = sample['classes'] - 1
-            img_id = self.ids[index]
+            img_id = recipe_id
 
         # output
         if self.partition == 'train':
@@ -139,9 +138,9 @@ class ImageLoader(data.Dataset):
                 return [img, instrs, itr_ln, ingrs, igr_ln], [target]
         else:
             if self.semantic_reg:
-                return [img, instrs, itr_ln, ingrs, igr_ln], [target, img_class, rec_class, img_id, rec_id]
+                return [img, instrs, itr_ln, ingrs, igr_ln], [target, img_class, rec_class, img_id, recipe_id]
             else:
-                return [img, instrs, itr_ln, ingrs, igr_ln], [target, img_id, rec_id]
+                return [img, instrs, itr_ln, ingrs, igr_ln], [target, img_id, recipe_id]
 
     def __len__(self):
         return len(self.ids)

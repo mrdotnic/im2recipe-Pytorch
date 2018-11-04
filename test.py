@@ -13,6 +13,29 @@ import numpy as np
 from trijoint import im2recipe
 import pickle
 from args import get_parser
+from itertools import izip
+import subprocess
+
+
+def get_gpu_memory_map():
+    """Get the current gpu usage.
+
+    Returns
+    -------
+    usage: dict
+        Keys are device ids as integers.
+        Values are memory usage as integers in MB.
+    """
+    result = subprocess.check_output(
+        [
+            'nvidia-smi', '--query-gpu=memory.used',
+            '--format=csv,nounits,noheader'
+        ])
+    # Convert lines into a dictionary
+    gpu_memory = [int(x) for x in result.strip().split('\n')]
+    gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
+    return gpu_memory_map
+
 
 # =============================================================================
 parser = get_parser()
@@ -28,8 +51,9 @@ np.random.seed(opts.seed)
 
 def main():
     model = im2recipe()
-    model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0, 1, 2, 3])
+    # model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0, 1, 2, 3])
     # model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0,1])
+    model.visionMLP = torch.nn.DataParallel(model.visionMLP, device_ids=[0])
     if not opts.no_cuda:
         model.cuda()
 
@@ -67,7 +91,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(
         ImageLoader(opts.img_path,
                     transforms.Compose([
-                        transforms.Scale(256),  # rescale the image keeping the original aspect ratio
+                        transforms.Resize(256),  # rescale the image keeping the original aspect ratio
                         transforms.CenterCrop(224),  # we get only the center of that rescaled
                         transforms.ToTensor(),
                         normalize,
@@ -91,24 +115,30 @@ def test(test_loader, model, criterion):
     model.eval()
 
     end = time.time()
-    for i, (input, target) in enumerate(test_loader):
-        input_var = list()
-        for j in range(len(input)):
-            v = torch.autograd.Variable(input[j], volatile=True)
-            input_var.append(v.cuda() if not opts.no_cuda else v)
-
-        target_var = list()
-        for j in range(len(target) - 2):  # we do not consider the last two objects of the list
-            target[j] = target[j]
-            v = torch.autograd.Variable(target[j], volatile=True)
-            target_var.append(v.cuda() if not opts.no_cuda else v)
+    limit = 5
+    # for i, (input_, target) in izip(range(limit), test_loader):
+    for i, (input_, target) in enumerate(test_loader):
+        print('index i: ' + str(i))
+        if i == limit:
+            break
+        input_var, target_var = list(), list()
+        with torch.no_grad():
+            for j in range(len(input_)):
+                print('len(input_): ', len(input_))
+                print('index j: ' + str(j))
+                input_var.append(input_[j].cuda() if not opts.no_cuda else input_[j])
+        with torch.no_grad():
+            for j in range(len(target) - 2):  # we do not consider the last two objects of the list
+                print('len(target): ', len(target))
+                print('index j: ' + str(j))
+                target_var.append(target[j].cuda() if not opts.no_cuda else target[j])
 
         # compute output
         output = model(input_var[0], input_var[1], input_var[2], input_var[3], input_var[4])
 
         # compute loss
         if opts.semantic_reg:
-            cos_loss = criterion[0](output[0], output[1], target_var[0])
+            cos_loss = criterion[0](output[0].float(), output[1].float(), target_var[0].float())
             img_loss = criterion[1](output[2], target_var[1])
             rec_loss = criterion[1](output[3], target_var[2])
             # combined loss
@@ -117,13 +147,13 @@ def test(test_loader, model, criterion):
                    opts.cls_weight * rec_loss
 
             # measure performance and record losses
-            cos_losses.update(cos_loss.data[0], input[0].size(0))
-            img_losses.update(img_loss.data[0], input[0].size(0))
-            rec_losses.update(rec_loss.data[0], input[0].size(0))
+            cos_losses.update(cos_loss.data[0], input_[0].size(0))
+            img_losses.update(img_loss.data[0], input_[0].size(0))
+            rec_losses.update(rec_loss.data[0], input_[0].size(0))
         else:
             loss = criterion(output[0], output[1], target_var[0])
             # measure performance and record loss
-            cos_losses.update(loss.data[0], input[0].size(0))
+            cos_losses.update(loss.data[0], input_[0].size(0))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
