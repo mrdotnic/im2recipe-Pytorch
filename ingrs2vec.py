@@ -87,7 +87,7 @@ def main():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-    # preparing test loader 
+    # preparing test loader
     test_loader = torch.utils.data.DataLoader(
         ImageLoader(opts.img_path,
                     transforms.Compose([
@@ -115,14 +115,14 @@ def test(test_loader, model, criterion):
     model.eval()
 
     end = time.time()
-    limit = 1
+    # for i, (input_, target) in enumerate(test_loader):
     # recipe_id = 'f6af7320c4'  has index 49568 in test_keys.pkl
+    limit = 1
     # for i, (input_, target) in izip(range(limit), test_loader):
-    for i, (input_, target) in enumerate(test_loader):
-        print('index i: ' + str(i))
-        if i == limit:
-            break
-    # for i, (input_, target) in enumerate(list(test_loader)[0]):
+    #     print('index i: ' + str(i))
+    #     if i == limit:
+    #         break
+    for i, (input_, target) in enumerate(test_loader[0]):
         input_var, target_var = list(), list()
         # input: [img, instrs, itr_ln, ingrs, igr_ln]
         # target: [target, img_class, rec_class, img_id, rec_id]
